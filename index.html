@@ -1,0 +1,308 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Astrologie Noire</title>
+    
+    <!-- Méta-données PWA (Pour l'installation sur mobile) -->
+    <link rel="manifest" href="manifest.json">
+    <link rel="apple-touch-icon" href="https://cdn-icons-png.flaticon.com/512/2647/2647306.png">
+    <link rel="icon" type="image/png" href="https://cdn-icons-png.flaticon.com/512/2647/2647306.png">
+    <meta name="theme-color" content="#0f172a">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <meta name="description" content="La face cachée, ténébreuse et honteuse de chaque signe du zodiaque.">
+
+    <!-- Tailwind CSS (Style) -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    
+    <!-- React & ReactDOM (Moteur de l'app) -->
+    <script crossorigin src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
+    <script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
+    
+    <!-- Babel (Traducteur de code) -->
+    <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+
+    <!-- Icônes Lucide -->
+    <script src="https://unpkg.com/lucide@latest"></script>
+
+    <style>
+        /* Cache la barre de défilement pour un look 'app native' */
+        .hide-scrollbar::-webkit-scrollbar { display: none; }
+        .hide-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
+        body { -webkit-tap-highlight-color: transparent; overscroll-behavior-y: none; }
+        
+        /* Animations personnalisées */
+        @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
+        .animate-fade-in { animation: fadeIn 0.5s ease-out forwards; }
+    </style>
+</head>
+<body class="bg-slate-950 text-slate-100 h-screen overflow-hidden">
+    <div id="root" class="h-full overflow-y-auto hide-scrollbar"></div>
+
+    <script type="text/babel">
+        const { useState, useEffect } = React;
+
+        // --- ICONS SVG (Intégrées pour performance maximale) ---
+        const IconUser = ({size=24, className=""}) => <svg xmlns="http://www.w3.org/2000/svg" width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}><path d="M19 21v-2a4 4 0 0 0-4-4H9a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>;
+        const IconUsers = ({size=24, className=""}) => <svg xmlns="http://www.w3.org/2000/svg" width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M22 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>;
+        const IconInfo = ({size=24, className=""}) => <svg xmlns="http://www.w3.org/2000/svg" width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}><circle cx="12" cy="12" r="10"/><path d="M12 16v-4"/><path d="M12 8h.01"/></svg>;
+        const IconSkull = ({size=24, className=""}) => <svg xmlns="http://www.w3.org/2000/svg" width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}><circle cx="9" cy="12" r="1"/><circle cx="15" cy="12" r="1"/><path d="M8 20v2h8v-2"/><path d="m12.5 17-.5-1-.5 1h1z"/><path d="M16 20a2 2 0 0 0 1.56-3.25 8 8 0 1 0-11.12 0A2 2 0 0 0 8 20"/></svg>;
+        const IconHeart = ({size=24, className=""}) => <svg xmlns="http://www.w3.org/2000/svg" width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}><path d="M19 14c1.49-1.46 3-3.21 3-5.5A5.5 5.5 0 0 0 16.5 3c-1.76 0-3 .5-4.5 2-1.5-1.5-2.74-2-4.5-2A5.5 5.5 0 0 0 2 8.5c0 2.3 1.5 4.05 3 5.5l7 7Z"/></svg>;
+        const IconZap = ({size=24, className=""}) => <svg xmlns="http://www.w3.org/2000/svg" width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/></svg>;
+        const IconFlame = ({size=24, className=""}) => <svg xmlns="http://www.w3.org/2000/svg" width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}><path d="M8.5 14.5A2.5 2.5 0 0 0 11 12c0-1.38-.5-2-1-3-1.072-2.143-.224-4.054 2-6 .5 2.5 2 4.9 4 6.5 2 1.6 3 3.5 3 5.5a7 7 0 1 1-14 0c0-1.1.2-2.2.6-3.3.7 2.5 1.9 3.8 2.9 3.8z"/></svg>;
+        const IconDroplets = ({size=24, className=""}) => <svg xmlns="http://www.w3.org/2000/svg" width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}><path d="M7 16.3c2.2 0 4-1.83 4-4.05 0-1.16-.57-2.26-1.71-3.19S7.29 6.75 7 5.3c-.29 1.45-1.14 2.84-2.29 3.76S3 11.1 3 12.25c0 2.22 1.8 4.05 4 4.05z"/><path d="M12.56 6.6A10.97 10.97 0 0 0 14 3.02c.5 2.5 2 4.9 4 6.5s3 3.5 3 5.5a6.98 6.98 0 0 1-11.91 4.97"/></svg>;
+        const IconWind = ({size=24, className=""}) => <svg xmlns="http://www.w3.org/2000/svg" width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}><path d="M17.7 7.7a2.5 2.5 0 1 1 1.8 4.3H2"/><path d="M9.6 4.6A2 2 0 1 1 11 8H2"/><path d="M12.6 19.4A2 2 0 1 0 14 16H2"/></svg>;
+        const IconMountain = ({size=24, className=""}) => <svg xmlns="http://www.w3.org/2000/svg" width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}><path d="m8 3 4 8 5-5 5 15H2L8 3z"/></svg>;
+        const IconHeartCrack = ({size=24, className=""}) => <svg xmlns="http://www.w3.org/2000/svg" width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}><path d="M19 14c1.49-1.46 3-3.21 3-5.5A5.5 5.5 0 0 0 16.5 3c-1.76 0-3 .5-4.5 2-1.5-1.5-2.74-2-4.5-2A5.5 5.5 0 0 0 2 8.5c0 2.3 1.5 4.05 3 5.5l7 7Z"/><path d="m12 13-1-1 2-2-3-3"/></svg>;
+
+        // --- COMPOSANT PRINCIPAL ---
+        const ZodiacApp = () => {
+            const [activeSign, setActiveSign] = useState('belier');
+            const [gender, setGender] = useState('homme');
+            const [partnerSign, setPartnerSign] = useState('balance');
+            const [compatibility, setCompatibility] = useState(null);
+            const [reaction, setReaction] = useState(null);
+
+            // Données des signes
+            const signs = [
+                { id: 'belier', name: 'Bélier', icon: '♈', dates: '21 Mars - 20 Avril', element: 'fire', number: 'I', flaw: "sa brutalité égoïste", weakness: "la colère" },
+                { id: 'taureau', name: 'Taureau', icon: '♉', dates: '21 Avril - 20 Mai', element: 'earth', number: 'II', flaw: "son avarice sordide", weakness: "la jalousie possessive" },
+                { id: 'gemeaux', name: 'Gémeaux', icon: '♊', dates: '21 Mai - 21 Juin', element: 'air', number: 'III', flaw: "son infidélité chronique", weakness: "le mensonge" },
+                { id: 'cancer', name: 'Cancer', icon: '♋', dates: '22 Juin - 22 Juillet', element: 'water', number: 'IV', flaw: "ses jérémiades incessantes", weakness: "la sensiblerie" },
+                { id: 'lion', name: 'Lion', icon: '♌', dates: '23 Juillet - 23 Août', element: 'fire', number: 'V', flaw: "son orgueil démesuré", weakness: "la vanité" },
+                { id: 'vierge', name: 'Vierge', icon: '♍', dates: '24 Août - 23 Septembre', element: 'earth', number: 'VI', flaw: "sa mesquinerie maniaque", weakness: "la critique" },
+                { id: 'balance', name: 'Balance', icon: '♎', dates: '24 Septembre - 23 Octobre', element: 'air', number: 'VII', flaw: "sa lâcheté hypocrite", weakness: "la paresse" },
+                { id: 'scorpion', name: 'Scorpion', icon: '♏', dates: '24 Octobre - 22 Novembre', element: 'water', number: 'VIII', flaw: "sa perversité cruelle", weakness: "le sadisme" },
+                { id: 'sagittaire', name: 'Sagittaire', icon: '♐', dates: '23 Novembre - 21 Décembre', element: 'fire', number: 'IX', flaw: "sa vantardise grossière", weakness: "l'opportunisme" },
+                { id: 'capricorne', name: 'Capricorne', icon: '♑', dates: '22 Décembre - 20 Janvier', element: 'earth', number: 'X', flaw: "sa froideur calculatrice", weakness: "le pessimisme" },
+                { id: 'verseau', name: 'Verseau', icon: '♒', dates: '21 Janvier - 19 Février', element: 'air', number: 'XI', flaw: "son inconstance totale", weakness: "l'irresponsabilité" },
+                { id: 'poissons', name: 'Poissons', icon: '♓', dates: '20 Février - 20 Mars', element: 'water', number: 'XII', flaw: "son masochisme geignard", weakness: "la fuite de la réalité" },
+            ];
+
+            // Gestion des couleurs
+            const getThemeColors = (element) => {
+                switch(element) {
+                case 'fire': return { bg: 'from-red-900/40', border: 'border-red-500/50', text: 'text-red-400', glow: 'shadow-red-900/50', icon: IconFlame };
+                case 'water': return { bg: 'from-blue-900/40', border: 'border-blue-500/50', text: 'text-blue-400', glow: 'shadow-blue-900/50', icon: IconDroplets };
+                case 'air': return { bg: 'from-purple-900/40', border: 'border-purple-500/50', text: 'text-purple-400', glow: 'shadow-purple-900/50', icon: IconWind };
+                case 'earth': return { bg: 'from-emerald-900/40', border: 'border-emerald-500/50', text: 'text-emerald-400', glow: 'shadow-emerald-900/50', icon: IconMountain };
+                default: return { bg: 'from-slate-900', border: 'border-slate-500', text: 'text-slate-400', glow: 'shadow-slate-900' };
+                }
+            };
+
+            const activeSignData = signs.find(s => s.id === activeSign);
+            const theme = getThemeColors(activeSignData.element);
+            const ElementIcon = theme.icon;
+
+            // Contenu Textuel Complet
+            const content = {
+                belier: { general: "Les Natifs du Bélier sont trop indépendants pour travailler longtemps sous les ordres des autres. Ils sont faits pour les professions libérales, les activités artistiques où ils pourront déployer à fond leur esprit d'initiative. Le signe ne prédispose pas à une vie calme, de tout repos. Le Natif réussit généralement par son courage indomptable et son acharnement au travail. En amour cet être fougueux a de gros besoins. C'est un séducteur né, un conquérant, un paillard.", homme: { malefique: "Coléreux, entêté, agressif, impulsif et cupide. Il manque totalement de scrupules. Infidèle, sans tact. Son ambition dégénère en arrivisme, son dynamisme en agression. D'un égoïsme monstrueux, il exerce son 'droit de cuissage'. Retors en affaires, il montre une absence totale de scrupules, escroque tout le monde y compris sa famille.", benefique: "Force de la nature, esprit novateur. Chef charismatique à qui tout réussit. Spontané, gai et généreux. En amour, c'est un partenaire éblouissant, viril, qui conduit toujours sa partenaire au septième ciel. Plein de finesse, de fantaisie, c'est un magnifique amant." }, femme: { malefique: "Une dépravée despotique qui a le goût inné de l'intrigue. Elle s'imagine la plus douée en amour. Gourgandine frénétique, elle prend plaisir à humilier son partenaire, surtout s'il est jaloux. En vieillissant, elle devient acariâtre. Elle aime le luxe tapageur et les machos qu'elle pourra ensuite détruire.", benefique: "D'une spontanéité charmante, vive et aimante. Fée alerte qui transforme le foyer en paradis. Active, zélée, collaboratrice de premier plan. Ardente et sensuelle, elle a besoin d'un compagnon viril capable de la dominer car c'est une nature forte." } },
+                taureau: { general: "Êtres sages, positifs, à l'esprit terre-à-terre. Fortes personnalités au bon sens robuste, capables d'un travail acharné. Mentalité terrienne, opiniâtre, sentiments frustes mais sincères. En amour, le Taureau est un sensuel aux solides appétits, sans excès de raffinement ni de dépravation.", homme: { malefique: "Lourdaud paresseux et obtus, jouisseur égoïste. Sa seule passion : les biens matériels (mentalité d'usurier). Sans imagination, méfiant. En amour, un égoïste qui ne songe qu'à son plaisir et n'épousera qu'une femme riche. Il a une peur viscérale de manquer.", benefique: "La 'bonne pâte', gentil, patient. Aime la vie de famille, la bonne chère. Travailleur, il amasse une fortune solide. Fidèle, il assure à sa compagne une vie sereine et confortable. Ses seuls vices sont les grands vins, les bons cigares et la politique." }, femme: { malefique: "Bourgeoise matérialiste et vénale. Aime le luxe et la luxure. Gourmande comme une chatte. Elle n'encombre pas sa vie de sentiments ; au lit, il lui faut des natures robustes. Elle n'aime que 'la bouffe, la bulle et la baise'. C'est une convive agréable mais vénale.", benefique: "Nature franche et saine, bonté, charme discret. Épouse idéale, excellente maîtresse de maison. Sensuelle, elle devance les désirs de son partenaire. Fidèle tant qu'elle est satisfaite. Elle offre une oasis de beauté et de paix." } },
+                gemeaux: { general: "Élégants, frivoles, dilettantes. Intelligence vive, curiosités éclectiques. La chance leur sourit. Ils détestent la routine. Conjoint agréable mais infidèle : le Gémeaux ment avec grâce, affabule et papillonne. Ils possèdent une grâce et une aisance naturelles.", homme: { malefique: "Bavard instable, vantard, menteur pathologique. Mène souvent une double vie. Escroc en affaires. En amour, il lui faut des perversions cérébrales. Il aime les femmes qui l'entretiennent ou les créatures viles. Il s'écoute parler et finit par ne plus savoir lui-même s'il dit la vérité.", benefique: "Gentleman dynamique, ambitieux, brillant causeur. Saisit toutes les opportunités. Touche-à-tout de génie. En amour, il aime le badinage, le flirt. Virtuose au lit, mais infidèle par nature ('butine de fleur en fleur')." }, femme: { malefique: "Charisme satanique, 'mante religieuse' qui exploite les hommes. Arrogante, dépensière, langue de vipère. Elle spécule sur la mort du conjoint. Au lit, bavarde, égoïste, aime les partouzes mondaines. Elle ment comme elle respire.", benefique: "Créature exquise, cérébrale, raffinée. Femme de tête qui dirige son monde à la baguette. Compagne précieuse pour les affaires. Pour elle, l'amour est un jeu de l'esprit ; elle aime être traitée en petite fille et cajolée." } },
+                cancer: { general: "Doux, crédules, rêveurs, lents. Très attachés à la famille et aux traditions. Aversion pour les sciences exactes, goût pour le merveilleux. En amour, ils méprisent souvent la sexualité qui leur demande trop d'efforts. Ils sont lents, indolents et flâneurs.", homme: { malefique: "Fourbe, hypocrite, capricieux. Ment, vole et triche. Susceptibilité maladive. En affaires, manque de punch. Obsession mammaire (les seins), mentalité de pacha, aime qu'on le flatte. Capable du pire, il ne faut jamais lui faire confiance.", benefique: "Artiste, poète, grand sentimental. Ami sûr et fidèle. Bon père et bon mari, homme d'intérieur. En amour, un 'faux chaste' qui se livre avec fougue, vouant un culte aux seins et... aux gants. Prêtre, navigateur ou écrivain." }, femme: { malefique: "Mélancolique, indolente, bourgeoise rêveuse. Aime les intrigues, médisante, jalouse. Pingre. Méprise l'amour physique, devient une matrone moralisatrice ou bigote en vieillissant. Elle est capable de brouiller les meilleurs amis.", benefique: "Tendre, affectueuse, douceur angélique. Faite pour le foyer. Intuitive, dévouée, fidèle même dans les épreuves. Idéalise l'amour : l'harmonie des âmes prime sur le physique. Son regard est lumineux." } },
+                lion: { general: "Vie aisée, sociables, généreux. Faits pour commander et paraître. Soucieux du luxe et du prestige. Recherchent un conjoint de 'leur classe'. Gourmands et sujets aux maladies de cœur. Ils ont besoin de paraître, de se distinguer.", homme: { malefique: "Cabotin prétentieux, bouffi d'orgueil, coléreux. Se croit sorti de la cuisse de Jupiter. Méprisant envers les inférieurs. En amour, érotomane dominateur, exhibitionniste, il faut le flatter sans cesse. Il estime que tout lui est dû.", benefique: "Noble, loyal, sûr de lui. Protecteur des faibles. Ambition de bon aloi. En amour, passionné, sensuel mais fidèle. Pardonne les écarts de son épouse avec une 'royale indulgence'. Il avance dans la vie d'un pas serein." }, femme: { malefique: "Glorieuse pimbêche cherchant un mari riche. Dédaigneuse, despotique. Hystérique si ses instincts se déchaînent. Dépensière, vaniteuse, intérieur désordonné. Elle veut être admirée et n'oublie jamais les blessures d'amour-propre.", benefique: "Beauté rayonnante, loyauté absolue. Maîtresse de maison parfaite. Vit l'amour avec intensité mais discrétion. Son seul défaut : un orgueil de grande dame qui l'empêche parfois de se laisser aller." } },
+                vierge: { general: "Êtres posés, logiques, matérialistes. Épris de précision. Excellents exécutants ou collaborateurs, rarement chefs. Modestes, honnêtes, sans grande ambition. Sens critique très développé. Plus doués pour les sciences exactes que pour les arts.", homme: { malefique: "Intolérant, froid, avare, tracassier. 'Emmerdeur' qui ratiocine. Gagne-petit, fonctionnaire borné. En amour, froid, complexe, masturbateur né, aucune ressemblance avec Don Juan. Il se prend lui-même très au sérieux.", benefique: "Intelligence pratique et constructive. Logique, bon sens. Aime la nature et la vie simple. En amour, une fois les inhibitions levées, c'est un amant fougueux et fidèle. Pondéré et réfléchi.", }, femme: { malefique: "Enquiquineuse grincheuse, bégueule. Ordonnée jusqu'à la manie. Frigide ou calculatrice. Sournoise, elle aime frauder et tricher par économie. Rancunière. Elle se sent mal dans sa peau.", benefique: "Exquise féminité, timide, ordonnée, économe. 'Fée diligente', dévouée. Collaboratrice sûre. En amour, merveilleuse une fois donnée, fidèle et affectueuse. Tout en elle respire l'ordre et la mesure." } },
+                balance: { general: "Doux, bons, charmants, un peu nonchalants. Portent en eux le sens de la justice et un goût artistique. Capricieux, trop mous pour aller au bout des choses. Les natives sont réputées pour être les plus belles femmes. Ils possèdent une excellente intuition.", homme: { malefique: "Paresseux, mou, veule, poltron. Hypocondriaque. Tyran domestique jaloux. En amour, infidèle, aime les étreintes crapuleuses et s'encanailler. Vite épris, vite lassé. Il vit dans une peur constante.", benefique: "Mécène éclairé, affable, charme fou. Juste milieu, courtoisie. 'Papillon élégant' qui aime les femmes mais sait rester fidèle moralement. Ne tient pas à l'argent. Il possède un sens artistique très développé.", }, femme: { malefique: "Calomniatrice sournoise, langue de vipère. Tyrannique, adore l'argent, obséquieuse avec les riches. Dépensière forcenée, capable de ruiner son mari. Nymphomane ou perverse. Elle suspecte la canaillerie chez tous.", benefique: "Créature de rêve, beauté parfaite. Épouse idéale, indulgente, spirituelle. Maîtresse de maison parfaite. Au lit, elle aime l'élégance et déteste la brutalité. Elle ne voit le mal nulle part." } },
+                scorpion: { general: "Cas unique, extrême en tout (du saint au criminel). Nature secrète, ne se livre pas. Vie dominée par une énorme sensualité. Aime le danger, le drame, le pouvoir absolu. Capable du meilleur comme du pire.", homme: { malefique: "Scélérat, fanatique, pervers. Sexomaniaque (inceste, débauche). Ennemi dangereux. En amour, aucune sentimentalité, cherche la luxure et le vice. Ne doute de rien. Sa mauvaise réputation n'est pas volée.", benefique: "Homme de tête, organisateur infatigable, meneur d'hommes. Charisme rayonnant. Amant extraordinaire, étreinte puissante capable d'initier n'importe qui à la volupté. Sa vie est un champ de bataille.", }, femme: { malefique: "La 'grande salope' du Zodiaque, garce sans foi ni loi. Chasseresse diabolique, sadique, elle détruit ses partenaires. Menteuse, perverse, infidèle. Ambitieuse prête à tout. Sa jouissance suprême c'est d'avilir l'homme.", benefique: "Merveilleuse partenaire, intelligence brillante, beauté fascinante. Indépendante et passionnée. Excellente maîtresse de maison. Amante fantastique au lit. Elle aime les petits voyages et les villes d'art." } },
+                sagittaire: { general: "Dominés par la chance et la réussite. Cadres dynamiques, bons vivants, sûrs d'eux. Jugement rapide. Mènent leur vie tambour battant. Toujours en représentation. Leur fortune est presque toujours au-dessus de la moyenne.", homme: { malefique: "Jean-foutre grossier, baratineur, escroc. Vantard, aime le clinquant. Politique véreux. Viveur, noceur. En amour, grossier mais endurant ('fusil à plusieurs coups'). Imposteur et falsificateur.", benefique: "Battant, gagneur, loyal. Optimiste et organisé. Généreux. Infidèle par besoin physique mais pas par méchanceté. Sexualité puissante. Il va toujours de l'avant.", }, femme: { malefique: "Infatuée, volage, traîtresse. 'Piège à gogos'. Vicieuse et rouée. Chapardeuse. Excelle dans les scènes de ménage. Menteuse et envieuse. Elle a la trahison dans le sang.", benefique: "Gracieuse, 'jolie gazelle', bonté. Sportive, naturelle. Organisatrice hors pair. Ardente amoureuse, fidèle si son partenaire l'est. Adore faire l'amour. Elle aime plaire et sait conquérir." } },
+                capricorne: { general: "Timides, sérieux, introvertis. Lents mais tenaces. Doués pour les sciences. S'éveillent tard à l'amour. Souvent célibataires. Craignent de déplaire. Chez lui tout est calculé et pesé.", homme: { malefique: "Taciturne, calculateur, avare sordide. 'Rond-de-cuir' lugubre et envieux. Rancunier. En amour, malheureux, peut devenir un pervers refoulé. Il voit toujours le côté noir des choses.", benefique: "Self-made-man tenace. Main de fer dans un gant de velours. Honnêteté scrupuleuse. Mari fidèle et affectueux. Sensualité grave et puissante. On peut toujours compter sur lui.", }, femme: { malefique: "Introvertie, sournoise, calculatrice. 'Chipie cafarde'. Frustrée, elle devient une 'vilaine chouette' aigrie. En amour, une dévergondée secrète, penchant pour l'onanisme. Elle cultive le goût de la ruse.", benefique: "Beauté discrète et mystérieuse. Loyale, solide. Collaboratrice perle ou chef d'entreprise. Épouse et mère admirable. Une fois en confiance, elle est très caressante." } },
+                verseau: { general: "Tournés vers l'avenir, le paradoxe. Cérébraux, préfèrent la théorie à la pratique. Méprisent les conventions. L'amour passe au second plan. Attirés par l'utopie. Ils sont à la fois attachants et repoussants.", homme: { malefique: "Fantoche désordonné, 'révolutionnaire fumeux'. Vit dans la crasse. Inefficace, égoïste. En amour, un coureur sans scrupules qui prend plus qu'il ne donne. Il veut réformer le monde par une philosophie confuse.", benefique: "Original, bienveillant, novateur. Défenseur des faibles. Ami fidèle. En amour, doux, compréhensif, respectueux de la liberté de l'autre. Il aime voir grand et loin.", }, femme: { malefique: "Fantasque, 'intellectuelle de gauche' superficielle. Excentrique. Dépensière. En amour, cérébrale, infidèle, passe d'un homme à l'autre sans remords. Elle fera n'importe quoi pour se rendre intéressante.", benefique: "Attachante, poétique, magnétique. Indépendante, combattante. Fidèle si comblée intellectuellement. Déteste les machos, cherche un égal. Elle ne souffre le joug d'aucune école." } },
+                poissons: { general: "Intuitifs, naifs, rêveurs. Manquent de décision. Scrupuleux et honnêtes. Voyants ou visionnaires. Ont besoin d'un partenaire fort pour les rassurer. Le Poisson est un être doux, bon, dévoué.", homme: { malefique: "Indécis, raseur, hypocrite. Se croit persécuté (paranoïaque). Tendance à l'alcool ou la drogue. En amour, timide, ambigu, pleurnichard et geignard. Il accuse le monde entier d'injustice.", benefique: "Doux, exquis, spirituel. Dévoué aux causes nobles. Humour. Moralité au-dessus de tout soupçon. Mari tendre et fidèle. Il possède de grandes qualités de coeur.", }, femme: { malefique: "Geignarde jamais satisfaite ('Vierge aux Sept Douleurs'). Nymphomane jeune, puis épouse acariâtre et frigide. Se plaint tout le temps et dénigre son conjoint. Elle exhale sa rancoeur devant l'univers.", benefique: "Sensible, gaie, dévouée. Charité immense. Recherche l'âme sœur et l'amour courtois. Foyer uni avant tout. Sait attendre le grand amour. Elle donne bien davantage qu'elle ne reçoit." } }
+            };
+
+            const currentData = content[activeSign];
+            const currentGenderData = currentData[gender];
+
+            const getRandomItem = (arr) => arr[Math.floor(Math.random() * arr.length)];
+
+            const specificInteractions = {
+                "balance-belier": { title: "La Guerre des Rose", block: "Il hurle, elle hésite. Il casse la vaisselle, elle veut en racheter de la plus jolie.", match: "L'attraction des contraires... jusqu'au premier meurtre." },
+                "belier-cancer": { title: "Le Loup et l'Agneau", block: "Vous allez le piétiner sans même vous en rendre compte. Préparez les mouchoirs (pour lui).", match: "Si vous avez besoin d'un paillasson, c'est l'idéal." },
+                "scorpion-taureau": { title: "Possession Mortelle", block: "Une jalousie maladive multipliée par deux. Qui étouffera l'autre en premier ?", match: "Des ébats furieux pour compenser des silences pesants." },
+                "taureau-verseau": { title: "Dialogue de Sourds", block: "Vous voulez construire une maison, il veut vivre dans une yourte. Vous comptez, il dépense.", match: "Aucun. Vraiment. Fuyez." },
+                "gemeaux-sagittaire": { title: "Fuite en Avant", block: "Deux gamins irresponsables lâchés dans la nature. Qui paiera le loyer ? Personne.", match: "Vous rirez beaucoup en fuyant vos créanciers." },
+                "gemeaux-vierge": { title: "Névrose en Stéréo", block: "Vous mentez, elle analyse. Vous esquivez, elle critique. Une partie d'échecs sans fin.", match: "Si vous aimez les prises de tête intellectuelles." },
+                "cancer-capricorne": { title: "Froid Polaire sur Océan de Larmes", block: "L'un demande des câlins, l'autre remplit sa déclaration d'impôts. Glacial.", match: "Une relation 'Père/Enfant' assez malsaine." },
+                "lion-verseau": { title: "Le Roi et le Bouffon", block: "Vous exigez l'admiration, il se moque de votre couronne. Ça va saigner.", match: "Si vous acceptez d'être détrôné (spoiler: non)." },
+                "lion-scorpion": { title: "Choc des Titans", block: "Deux dictateurs pour un seul trône. La guerre nucléaire est inévitable.", match: "Une passion destructrice digne d'un film catastrophe." },
+                "poissons-vierge": { title: "L'Infirmière et le Cas Social", block: "Vous allez passer votre vie à le torcher, le soigner et payer ses dettes.", match: "Votre syndrome du sauveur sera comblé." },
+                "gemeaux-scorpion": { title: "Thriller Psychologique", block: "Le Scorpion flaire chaque mensonge du Gémeaux. Le Gémeaux panique face à la paranoïa du Scorpion.", match: "Le sexe de réconciliation après une scène de ménage." },
+                "lion-taureau": { title: "Guerre Financière", block: "Le Taureau compte les centimes, le Lion jette l'argent par les fenêtres. Meurtre possible pour une facture.", match: "L'amour du luxe... si quelqu'un d'autre paie." }
+            };
+
+            const calculateCompatibility = () => {
+                const s1 = signs.find(s => s.id === activeSign);
+                const s2 = signs.find(s => s.id === partnerSign);
+                const key = [s1.id, s2.id].sort().join('-');
+                
+                const sameElement = {
+                    titles: ["Miroir Déformant", "Ennui Mortel", "Guerre Civile", "Narcissisme à Deux"],
+                    blocks: [`Deux fois ${s1.flaw}, c'est de l'acharnement thérapeutique.`, "Vous connaissez ses vices par cœur, puisque vous avez les mêmes.", "Vous finirez par vous détester par pure ressemblance.", "C'est comme sortir avec son propre reflet, en plus moche."],
+                    matches: ["Votre capacité commune à nuire aux autres.", "Personne d'autre ne vous supporterait.", "Une routine confortable dans la médiocrité.", "L'économie de mots (vous savez déjà ce qu'il va dire)."]
+                };
+                const fireAir = {
+                    titles: ["Incendie Volontaire", "Tornade de Feu", "Explosion de Gaz", "Fatigue Généralisée"],
+                    blocks: [`L'air attise le feu... jusqu'à ce que tout brûle. ${s1.flaw} rencontre ${s2.weakness}.`, "Ça va partir dans tous les sens, surtout dans le mur.", "Beaucoup de bruit, beaucoup de vent, peu de résultats.", "Une relation épuisante pour les voisins."],
+                    matches: ["Vous ne vous ennuierez pas (mais vous serez ruinés).", "L'aventure, jusqu'à l'épuisement total.", "Une créativité destructrice très photogénique.", "Idéal pour une amitié avec bénéfices, pas pour un mariage."]
+                };
+                const earthWater = {
+                    titles: ["Boue Toxique", "Marais Stagnant", "Enlisement Total", "Fleurs du Mal"],
+                    blocks: ["L'eau ramollit la terre, la terre souille l'eau. Résultat : de la gadoue.", `${s1.weakness} de l'un nourrit ${s2.flaw} de l'autre. Malsain.`, "Vous allez vous noyer dans un verre d'eau (ou de vin).", "Trop d'émotions refoulées qui finiront en ulcère."],
+                    matches: ["Une fertilité effrayante (attention aux enfants).", "Vous pouvez construire un empire sur des cadavres.", "Un confort bourgeois étouffant mais sécurisant.", "La nourriture. Vous aimerez manger ensemble."]
+                };
+                const incompatible = {
+                    titles: ["Erreur de Casting", "L'Huile et le Feu", "Dialogue de Sourds", "Naufrage Annoncé"],
+                    blocks: [`${s1.name} veut imposer sa loi, ${s2.name} ne comprend même pas la langue.`, `Votre ${s1.weakness} insupporte son besoin de ${s2.flaw.split(' ').pop()}.`, "Vous vivez sur deux planètes différentes. Et la sienne est nulle.", "Il va éteindre votre flamme, ou vous allez vaporiser ses rêves."],
+                    matches: ["Le sexe de réconciliation (fréquent).", "Si vous ne vous parlez jamais, ça peut tenir.", "La haine est une forme d'attachement comme une autre.", "Ça fera une super histoire à raconter à votre psy."]
+                };
+
+                let result = {};
+                if (specificInteractions[key]) {
+                    result = { percent: Math.floor(Math.random() * 40) + 10, ...specificInteractions[key] };
+                } else if (s1.element === s2.element) {
+                    result = { percent: Math.floor(Math.random() * 30) + 60, title: getRandomItem(sameElement.titles), block: getRandomItem(sameElement.blocks), match: getRandomItem(sameElement.matches) };
+                } else if ((s1.element === 'fire' && s2.element === 'air') || (s1.element === 'air' && s2.element === 'fire')) {
+                    result = { percent: Math.floor(Math.random() * 30) + 50, title: getRandomItem(fireAir.titles), block: getRandomItem(fireAir.blocks), match: getRandomItem(fireAir.matches) };
+                } else if ((s1.element === 'earth' && s2.element === 'water') || (s1.element === 'water' && s2.element === 'earth')) {
+                    result = { percent: Math.floor(Math.random() * 30) + 50, title: getRandomItem(earthWater.titles), block: getRandomItem(earthWater.blocks), match: getRandomItem(earthWater.matches) };
+                } else {
+                    result = { percent: Math.floor(Math.random() * 20), title: getRandomItem(incompatible.titles), block: getRandomItem(incompatible.blocks), match: getRandomItem(incompatible.matches) };
+                }
+                setCompatibility(result);
+            };
+
+            const handleReaction = (type) => {
+                setReaction(type);
+                setTimeout(() => setReaction(null), 2000);
+            };
+
+            useEffect(() => { setCompatibility(null); }, [activeSign, partnerSign]);
+
+            // --- RENDU UI (Simplifié pour le format HTML unique) ---
+            return (
+                <div className={`min-h-screen bg-gradient-to-br ${theme.bg} to-slate-950 pb-10 transition-colors duration-700`}>
+                    {/* En-tête avec titre */}
+                    <header className="bg-slate-950/80 backdrop-blur border-b border-slate-800 p-6 text-center shadow-lg relative overflow-hidden sticky top-0 z-50">
+                        <div className={`absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-transparent via-${theme.text.split('-')[1]}-500 to-transparent opacity-70`}></div>
+                        <h1 className={`text-3xl md:text-4xl font-extrabold tracking-tight text-transparent bg-clip-text bg-gradient-to-br from-slate-100 to-slate-400 mb-2`}>ASTROLOGIE NOIRE</h1>
+                        <p className={`${theme.text} text-xs md:text-sm italic font-medium tracking-wide`}>"La face cachée et honteuse de chaque signe"</p>
+                    </header>
+
+                    {/* Navigation des Signes */}
+                    <div className="sticky top-[88px] z-40 bg-slate-900/95 backdrop-blur-sm border-b border-slate-800 shadow-md">
+                        <div className="flex overflow-x-auto p-2 gap-2 hide-scrollbar max-w-7xl mx-auto items-center md:justify-center">
+                            {signs.map((sign) => (
+                                <button key={sign.id} onClick={() => setActiveSign(sign.id)} className={`flex flex-col items-center justify-center min-w-[70px] p-2 rounded-lg transition-all duration-300 border shrink-0 ${activeSign === sign.id ? `bg-slate-800/80 ${theme.border} ${theme.text} scale-105 ${theme.glow} shadow-lg` : 'bg-slate-800/30 border-transparent text-slate-400'}`}>
+                                    <span className="text-2xl mb-1 filter drop-shadow-md">{sign.icon}</span>
+                                    <span className="text-[10px] font-bold opacity-60 mb-0.5 text-xs">{sign.number}</span>
+                                    <span className="text-[10px] uppercase tracking-wider font-semibold">{sign.name}</span>
+                                </button>
+                            ))}
+                        </div>
+                    </div>
+
+                    <div className="max-w-5xl mx-auto px-4 mt-8">
+                        {/* Gros titre du signe actif */}
+                        <div className="text-center mb-10 relative animate-fade-in">
+                            <div className={`inline-block p-6 rounded-full bg-slate-800/50 border-2 ${theme.border} mb-4 shadow-2xl relative group`}>
+                                <span className="text-6xl filter drop-shadow-lg">{activeSignData.icon}</span>
+                                <div className={`absolute -right-2 -bottom-2 bg-slate-900 p-2 rounded-full border ${theme.border} text-${theme.text.split('-')[1]}-400`}>
+                                    <ElementIcon size={20} />
+                                </div>
+                            </div>
+                            <h2 className="text-4xl font-bold text-white mb-2 drop-shadow-lg">{activeSignData.name}</h2>
+                            <p className={`${theme.text} font-medium tracking-widest uppercase text-sm`}>{activeSignData.dates}</p>
+                        </div>
+
+                        {/* Sélecteur Homme/Femme */}
+                        <div className="flex justify-center mb-10">
+                            <div className="bg-slate-800/80 p-1.5 rounded-full border border-slate-700 flex relative shadow-xl">
+                                <div className={`absolute top-1.5 bottom-1.5 w-[calc(50%-6px)] rounded-full transition-all duration-300 ease-out shadow-inner ${gender === 'homme' ? 'left-1.5 bg-blue-900/60' : 'left-[calc(50%+4px)] bg-pink-900/60'}`}></div>
+                                <button onClick={() => setGender('homme')} className={`relative z-10 flex items-center gap-2 px-6 md:px-8 py-2.5 rounded-full transition-all duration-300 ${gender === 'homme' ? 'text-blue-200 font-bold' : 'text-slate-400 hover:text-white'}`}><IconUser size={18} /> Homme</button>
+                                <button onClick={() => setGender('femme')} className={`relative z-10 flex items-center gap-2 px-6 md:px-8 py-2.5 rounded-full transition-all duration-300 ${gender === 'femme' ? 'text-pink-100 font-bold' : 'text-slate-400 hover:text-white'}`}><IconUsers size={18} /> Femme</button>
+                            </div>
+                        </div>
+
+                        {/* Texte Général */}
+                        <div className={`bg-slate-800/40 backdrop-blur-sm border ${theme.border} rounded-xl p-6 md:p-8 mb-8 shadow-2xl relative overflow-hidden`}>
+                            <div className="flex items-start gap-5 relative z-10">
+                                <IconInfo className={`${theme.text} shrink-0 mt-1`} size={28} />
+                                <div>
+                                    <h3 className={`text-xl font-bold ${theme.text} mb-4 border-b border-white/10 pb-2 inline-block`}>Portrait Général</h3>
+                                    <p className="text-slate-200 leading-relaxed text-justify whitespace-pre-wrap font-light text-lg">{currentData.general}</p>
+                                </div>
+                            </div>
+                        </div>
+
+                        {/* Cartes Maléfique / Bénéfique */}
+                        <div className="grid lg:grid-cols-2 gap-8 mb-16">
+                            <div className="bg-gradient-to-b from-slate-800 to-slate-900 border border-red-900/40 rounded-xl overflow-hidden shadow-2xl relative flex flex-col">
+                                <div className="bg-red-950/40 p-6 border-b border-red-900/20 flex items-center gap-3"><IconSkull className="text-red-500" size={28} /><h3 className="text-2xl font-bold text-red-200">Le Type Maléfique</h3></div>
+                                <div className="p-8 flex-grow relative flex flex-col justify-between">
+                                    <p className="text-red-100/90 leading-relaxed text-justify whitespace-pre-wrap border-l-4 border-red-800/50 pl-6 text-lg mb-4">{currentGenderData.malefique}</p>
+                                    <div className="mt-6 flex justify-end gap-2">
+                                        <button onClick={() => handleReaction('ex')} className="text-xs bg-red-900/30 text-red-300 px-3 py-1 rounded-full border border-red-900/50">C'est mon Ex ! 🤬</button>
+                                        <button onClick={() => handleReaction('me')} className="text-xs bg-slate-800 text-slate-300 px-3 py-1 rounded-full border border-slate-700">C'est tout moi 😈</button>
+                                    </div>
+                                    {reaction && <div className="absolute inset-0 flex items-center justify-center bg-black/60 backdrop-blur-sm z-20 animate-fade-in"><span className="text-4xl font-bold text-white transform -rotate-12">{reaction === 'ex' ? "On compatit ! 💀" : "Démon ! 😈"}</span></div>}
+                                </div>
+                            </div>
+
+                            <div className="bg-gradient-to-b from-slate-800 to-slate-900 border border-amber-900/40 rounded-xl overflow-hidden shadow-2xl relative flex flex-col">
+                                <div className="bg-amber-950/40 p-6 border-b border-amber-900/20 flex items-center gap-3"><IconHeart className="text-amber-500" size={28} /><h3 className="text-2xl font-bold text-amber-200">Le Type Bénéfique</h3></div>
+                                <div className="p-8 flex-grow flex flex-col justify-between">
+                                    <p className="text-amber-100/90 leading-relaxed text-justify whitespace-pre-wrap border-l-4 border-amber-800/50 pl-6 text-lg mb-4">{currentGenderData.benefique}</p>
+                                    <div className="mt-6 flex justify-end"><button className="text-xs bg-amber-900/30 text-amber-300 px-3 py-1 rounded-full border border-amber-900/50">J'aimerais y croire... 😇</button></div>
+                                </div>
+                            </div>
+                        </div>
+
+                        {/* Calculateur de Compatibilité */}
+                        <div className="bg-slate-900/80 border border-slate-700 rounded-2xl p-8 mb-16 text-center shadow-2xl max-w-2xl mx-auto relative overflow-hidden">
+                            <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-purple-500 via-pink-500 to-red-500"></div>
+                            <h3 className="text-2xl font-bold text-transparent bg-clip-text bg-gradient-to-r from-purple-400 to-pink-400 mb-6 flex items-center justify-center gap-2"><IconHeartCrack size={24} /> Calculateur de Compatibilité Toxique</h3>
+                            
+                            <div className="flex flex-col md:flex-row items-center justify-center gap-6 mb-8">
+                                <div className="bg-slate-800 p-4 rounded-xl border border-slate-600 min-w-[150px]"><span className="text-4xl block mb-2">{activeSignData.icon}</span><span className="font-bold text-slate-200">{activeSignData.name}</span></div>
+                                <div className="text-2xl font-bold text-slate-500">+</div>
+                                <div className="relative">
+                                    <select value={partnerSign} onChange={(e) => setPartnerSign(e.target.value)} className="appearance-none bg-slate-800 text-slate-200 p-4 pl-6 pr-12 rounded-xl border border-slate-600 focus:outline-none focus:border-purple-500 cursor-pointer min-w-[150px] font-bold text-center">
+                                        {signs.map(s => <option key={s.id} value={s.id}>{s.icon} {s.name}</option>)}
+                                    </select>
+                                </div>
+                            </div>
+
+                            {!compatibility ? (
+                                <button onClick={calculateCompatibility} className="bg-gradient-to-r from-purple-600 to-pink-600 text-white font-bold py-3 px-8 rounded-full shadow-lg flex items-center gap-2 mx-auto transition-transform active:scale-95"><IconZap size={20} /> Tester le Désastre</button>
+                            ) : (
+                                <div className="text-left bg-slate-800/50 p-6 rounded-xl border border-slate-600 animate-fade-in">
+                                    <div className="text-center mb-6 border-b border-slate-700 pb-4">
+                                        <div className="text-6xl font-black text-transparent bg-clip-text bg-gradient-to-b from-white to-slate-400 mb-2">{compatibility.percent}%</div>
+                                        <p className="text-2xl text-pink-300 font-bold font-serif italic tracking-wide">"{compatibility.title}"</p>
+                                    </div>
+                                    <div className="space-y-4">
+                                        <div className="p-4 bg-red-950/30 border-l-4 border-red-500 rounded-r-lg"><p className="text-xs uppercase font-bold text-red-400 mb-1 flex items-center gap-2"><IconSkull size={14}/> Le Problème :</p><p className="text-slate-200 text-lg italic font-light">"{compatibility.block}"</p></div>
+                                        <div className="p-4 bg-emerald-950/30 border-l-4 border-emerald-500 rounded-r-lg"><p className="text-xs uppercase font-bold text-emerald-400 mb-1 flex items-center gap-2"><IconHeart size={14}/> Le (maigre) Espoir :</p><p className="text-slate-200 text-lg italic font-light">"{compatibility.match}"</p></div>
+                                    </div>
+                                    <div className="text-center mt-8"><button onClick={() => setCompatibility(null)} className="text-sm text-slate-500 hover:text-slate-300 underline">Essayer une autre catastrophe</button></div>
+                                </div>
+                            )}
+                        </div>
+
+                        {/* Footer */}
+                        <div className="mt-20 text-center text-slate-600 text-sm border-t border-slate-800 pt-8 pb-8">
+                            <p>Ce contenu est basé sur l'œuvre de Guy de Wargny et les archives de Science & Magie.</p>
+                            <p className="mt-2 text-slate-500">À prendre avec un grain de sel, et beaucoup d'humour noir.</p>
+                        </div>
+                    </div>
+                </div>
+            );
+        };
+
+        const root = ReactDOM.createRoot(document.getElementById('root'));
+        root.render(<ZodiacApp />);
+    </script>
+</body>
+</html>
